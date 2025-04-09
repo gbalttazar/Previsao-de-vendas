@@ -1,18 +1,34 @@
+from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-import pandas as pd
 
-def preparar_dados(df):
-    df_grouped = df.groupby('Mes_Ano')['Total'].sum().reset_index()
-    df_grouped['Mes_Ano'] = df_grouped['Mes_Ano'].astype(str)
-    df_grouped['Mes'] = range(len(df_grouped))
-    return df_grouped[['Mes']], df_grouped['Total']
+def valida_modelo_polinomial(X, y, grau=2, cv=5):
+    """
+    Utiliza cross_val_score para validar o modelo polinomial e retorna a média do RMSE.
+    """
+    # Cria um pipeline com transformação polinomial e regressão linear
+    pipeline = Pipeline([
+        ('poly', PolynomialFeatures(degree=grau)),
+        ('linear', LinearRegression())
+    ])
+    # Usando cross_val_score com scoring negativo de RMSE (o cross_val_score retorna valores negativos para erros)
+    # Precisamos tirar a raiz quadrada e inverter o sinal para obter o RMSE.
+    scores = cross_val_score(pipeline, X, y, cv=cv, scoring='neg_mean_squared_error')
+    rmse_scores = np.sqrt(-scores)
+    return rmse_scores.mean()
 
-def treinar_modelo(X, y):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    modelo = LinearRegression()
-    modelo.fit(X_train, y_train)
-    y_pred = modelo.predict(X_test)
-    erro = mean_squared_error(y_test, y_pred, squared=False)
-    return modelo, erro
+# Exemplo de uso:
+if __name__ == '__main__':
+    from analise import carregar_dados
+    from modelo_regressao import preparar_dados, treinar_modelo_polinomial, valida_modelo_polinomial
+    CAMINHO_CSV = 'data/supermarket_sales.csv'
+    df = carregar_dados(CAMINHO_CSV)
+    X, y = preparar_dados(df)
+    
+    graus_teste = [1, 2, 3, 4]
+    print("=== Validação Cruzada para Modelos Polinomiais ===")
+    for grau in graus_teste:
+        rmse_cv = valida_modelo_polinomial(X, y, grau=grau)
+
+        print(f"Grau: {grau} - RMSE (CV): {rmse_cv:.2f}")
