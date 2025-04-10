@@ -1,34 +1,32 @@
-from sklearn.model_selection import cross_val_score
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
-def valida_modelo_polinomial(X, y, grau=2, cv=5):
+def preparar_dados(df):
     """
-    Utiliza cross_val_score para validar o modelo polinomial e retorna a média do RMSE.
+    Agrupa as vendas por mês e cria uma feature numérica 'Mes_Num' para regressão.
     """
-    # Cria um pipeline com transformação polinomial e regressão linear
+    vendas_mensais = df.groupby('Mes_Ano')['Total'].sum().reset_index()
+    vendas_mensais['Mes_Num'] = range(len(vendas_mensais))
+    return vendas_mensais[['Mes_Num']], vendas_mensais['Total']
+
+def treinar_modelo_polinomial(X, y, grau=2):
     pipeline = Pipeline([
         ('poly', PolynomialFeatures(degree=grau)),
         ('linear', LinearRegression())
     ])
-    # Usando cross_val_score com scoring negativo de RMSE (o cross_val_score retorna valores negativos para erros)
-    # Precisamos tirar a raiz quadrada e inverter o sinal para obter o RMSE.
-    scores = cross_val_score(pipeline, X, y, cv=cv, scoring='neg_mean_squared_error')
-    rmse_scores = np.sqrt(-scores)
-    return rmse_scores.mean()
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    pipeline.fit(X_train, y_train)
+    y_pred = pipeline.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    erro = np.sqrt(mse)
+    return pipeline, erro
 
-# Exemplo de uso:
-if __name__ == '__main__':
-    from analise import carregar_dados
-    from modelo_regressao import preparar_dados, treinar_modelo_polinomial, valida_modelo_polinomial
-    CAMINHO_CSV = 'data/supermarket_sales.csv'
-    df = carregar_dados(CAMINHO_CSV)
-    X, y = preparar_dados(df)
-    
-    graus_teste = [1, 2, 3, 4]
-    print("=== Validação Cruzada para Modelos Polinomiais ===")
-    for grau in graus_teste:
-        rmse_cv = valida_modelo_polinomial(X, y, grau=grau)
-
-        print(f"Grau: {grau} - RMSE (CV): {rmse_cv:.2f}")
+def prever(modelo, mes_futuro):
+    import pandas as pd
+    X_novo = pd.DataFrame({'Mes_Num': [mes_futuro]})
+    return modelo.predict(X_novo)
