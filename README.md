@@ -47,9 +47,4 @@ O dataset utilizado foi o **Supermarket Sales** com dados fictícios de vendas.
 
 ---
 
-## 🧪 Como Executar o Projeto
 
-1. Clone o repositório:
-```bash
-git clone https://github.com/seu-usuario/Previsao-de-vendas.git
-cd Previsao-de-vendas
